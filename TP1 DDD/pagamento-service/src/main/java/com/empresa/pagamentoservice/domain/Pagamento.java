@@ -1,5 +1,9 @@
 package com.empresa.pagamentoservice.domain;
 
+import com.empresa.pagamentoservice.domain.evento.DomainEvent;
+import com.empresa.pagamentoservice.domain.evento.PagamentoConfirmadoEvent;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class Pagamento {
@@ -7,6 +11,7 @@ public class Pagamento {
     private final UUID pedidoId;
     private Valor valor;
     private StatusPagamento status;
+    private final List<DomainEvent> eventos = new ArrayList<>();
 
     public Pagamento(UUID id, UUID pedidoId, Valor valor) {
         this.id = id;
@@ -23,5 +28,10 @@ public class Pagamento {
             );
         }
         this.status = StatusPagamento.CONFIRMADO;
+        eventos.add(new PagamentoConfirmadoEvent(this.id, this.pedidoId));
+    }
+
+    public List<DomainEvent> eventos() {
+        return List.copyOf(eventos);
     }
 }
