@@ -1,11 +1,17 @@
-# TP1 - DDD e Arquitetura de Softwares Escaláveis
+# TP1 e TP2 - DDD e Arquitetura de Softwares Escaláveis
 
-Repositório com a estrutura inicial da extração do contexto de **Pagamento** de um sistema monolítico de e-commerce para um microsserviço, aplicando princípios de DDD e o padrão de migração **Strangler Fig**.
+Repositório com a evolução de um sistema monolítico de e-commerce para uma arquitetura orientada a DDD, cobrindo dois trabalhos:
+
+- **TP1**: extração do contexto de **Pagamento** para um microsserviço, aplicando o padrão de migração **Strangler Fig**.
+- **TP2**: introdução de um segundo Aggregate (`Pedido`) e comunicação entre agregados via **eventos de domínio**, eliminando o acoplamento síncrono entre eles.
 
 ## Estrutura do repositório
 
-- **`pagamento-service/`** — novo microsserviço extraído do monólito. Contém o Aggregate Root `Pagamento` e o Value Object `Valor`, seguindo os princípios de DDD.
-- **`monolito-legado/`** — representa o sistema monolítico legado (simulado). Contém a interface `PagamentoGateway` e sua implementação `PagamentoGatewayHttp`, responsáveis por comunicar o monólito com o novo microsserviço de forma desacoplada.
+- **`pagamento-service/`** — microsserviço com todo o domínio de Pagamento e Pedido:
+  - `domain/` — `Pagamento` (Aggregate Root) e `Valor` (Value Object), do TP1.
+  - `domain/pedido/` — `Pedido` (Aggregate Root) e `StatusPedido`, do TP2. Referencia `Pagamento` apenas pelo ID.
+  - `domain/evento/` — `DomainEvent` (abstração) e `PagamentoConfirmadoEvent` (evento de domínio concreto), do TP2.
+- **`monolito-legado/`** — representa o sistema monolítico legado (simulado), do TP1. Contém a interface `PagamentoGateway` e sua implementação `PagamentoGatewayHttp`, responsáveis por comunicar o monólito com o novo microsserviço de forma desacoplada.
 
 ## Pré-requisitos
 
@@ -44,7 +50,15 @@ Ou, pelo IntelliJ: abra a pasta `monolito-legado` como projeto e rode a classe `
 
 ## Conceitos de DDD aplicados
 
+### TP1
 - **Aggregate Root** (`Pagamento`): protege as invariantes do domínio através de comportamento (`confirmar()`), em vez de expor setters genéricos.
 - **Value Object** (`Valor`): imutável, validado no próprio construtor.
 - **Bounded Context**: o pacote `com.empresa.pagamentoservice` isola a linguagem e as regras do contexto de Pagamento.
 - **Interface de integração / Anti-Corruption Layer** (`PagamentoGateway`): garante baixo acoplamento entre o monólito legado e o novo microsserviço.
+
+### TP2
+- **Segundo Aggregate** (`Pedido`): referencia `Pagamento` apenas pelo ID (`pagamentoId`), nunca pelo objeto inteiro, mantendo os dois agregados independentes.
+- **Evento de domínio** (`PagamentoConfirmadoEvent`): representa, de forma imutável, o fato já ocorrido de um pagamento ter sido confirmado.
+- **Abstração de evento** (`DomainEvent`): contrato comum que todo evento de domínio do projeto implementa.
+- **Registro de eventos no Agregado**: o método `Pagamento.confirmar()` valida a invariante (só confirma se estiver `PENDENTE`), muda o estado e registra o evento numa lista interna, eliminando a necessidade de chamar diretamente o serviço de outro agregado.
+- **Arquitetura de publicação de eventos**: padrão Outbox (grava pagamento + evento na mesma transação) combinado com um tópico Kafka, permitindo múltiplos consumidores independentes reagirem ao mesmo evento.
